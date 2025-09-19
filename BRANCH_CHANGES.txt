@@ -1,0 +1,141 @@
+Summary of changes made on this branch vs main (detailed)
+
+1) tools.py
+ - Added environment loading (python-dotenv).
+ - Made PyPDFLoader import optional with try/except; handle missing langchain-community gracefully.
+ - Implemented a lazy _search_wrapper that imports/instantiates SerperDevTool only when needed; stopped instantiating SerperDevTool at module import time.
+ - Implemented read_financial_pdf(path) function: saves/reads PDF via PyPDFLoader (handles load/load_and_split variations), cleans text via _clean_text, returns diagnostic strings when file/loader unavailable or errors occur.
+ - Implemented analyze_investment_data(data) placeholder function (deterministic skeleton).
+ - Implemented create_risk_assessment(data) placeholder function (deterministic skeleton).
+ - Added _clean_text helper (normalize whitespace, collapse extra newlines).
+ - Exported all tools as plain Python dicts (name, func, description) to avoid CrewAI/langchain coercion issues and Pydantic/BaseTool instantiation problems.
+ - Added a fallback search_tool dict when crewai_tools.SerperDevTool is unavailable.
+
+2) agents.py
+ - Added missing os import and load_dotenv().
+ - Removed direct dependency on OpenAI ChatOpenAI in final branch (we added Groq option).
+ - Added robust handling for LLM provider:
+    - Attempt to use langchain_groq (if installed).
+    - If not available, provide a GroqAdapter fallback (HTTP adapter) that is instantiated only when GROQ_API_KEY present.
+ - Ensured Agent objects are created with llm present; removed tool lists from Agent constructors (to avoid runtime Pydantic coercion errors).
+ - Fixed model/parameter names and ensured no use of undefined variables.
+ - Added minimal Agent definitions (financial_analyst, verifier, risk_assessor, etc.) using the configured llm.
+
+3) task.py
+ - Fixed numerous syntax issues (mismatched parentheses/brackets).
+ - Rewrote Task definitions to:
+    - Use long, explicit description and expected_output blocks (JSON templates).
+    - Remove tool lists from Task constructors (to prevent coercion/abstract BaseTool instantiation at import time).
+    - Ensure tasks reference the Agent objects present in agents.py.
+ - Standardized naming to use the exported *_tool dicts (tools are supplied at execution time rather than forced at import).
+
+4) main.py
+ - Implemented FastAPI app skeleton with:
+    - GET / health endpoint returning {"status":"ok"}.
+    - POST /analyze that accepts UploadFile + query (saves uploaded file to tmp_uploads).
+    - Uses read_financial_pdf_tool's "func" to extract text (calls dict["func"]).
+    - Catches OpenAI/Groq API errors (e.g., RateLimit) and returns clear HTTP 5xx messages.
+ - Added run_crew() stub (placeholder) to integrate Crew kickoff when LLM/tasks are ready.
+ - Added guidance to run uvicorn without --reload for stable local testing when posting requests.
+
+5) Runtime / Pydantic / BaseTool handling
+ - Avoided instantiating abstract BaseTool subclasses at import time (this previously raised "Can't instantiate abstract class BaseTool" errors).
+ - Standardized approach to supply tools as plain dicts to Agents/Tasks or to pass tools at Task/Crew execution time.
+ - Removed earlier attempts that defined BaseTool subclasses without fully implementing required abstract methods.
+
+6) Testing & utilities
+ - Added test_post.py (renamed from import requests.py) as a scripted test client using requests; prints response code and preview.
+ - Documented how to run uvicorn and the test script.
+ - Addressed file-shadowing issue (don't name test files import requests.py).
+
+7) Error handling & developer ergonomics
+ - Added explicit diagnostics returned from tools when dependencies missing (e.g., "[read_financial_pdf] PyPDFLoader not available").
+ - Added HTTP 503 mapping for OpenAI rate/quota errors and clearer error messages in main.py.
+ - Included notes to set GROQ_API_KEY or OPENAI_API_KEY in .env / environment.
+
+8) Dependency recommendations (not added to branch as files)
+ - langchain-community (for PyPDFLoader)
+ - python-dotenv
+ - requests (for adapters/tests)
+ - langchain-groq (or official Groq SDK) if switching LLM provider
+ - crewai / crewai-tools (optional; used only if available)
+ - uvicorn, fastapi
+
+What remains / caveats
+ - The analyze_investment_data and create_risk_assessment functions are placeholders and must be implemented for production analysis.
+ - If you choose OpenAI instead of Groq, restore ChatOpenAI usage and ensure OPENAI_API_KEY is set; handle rate limits accordingly.
+ - If you prefer BaseTool / langchain.Tool instances, implement concrete classes with annotated fields and a working _run method, and instantiate them safely (not at import time) or pass dicts to Crew/Agent as done here.
+ - Confirm exact langchain_groq import/class name if you want to use the package directly; branch includes an adapter fallback to avoid import errors.
+
+End of change list.
+```// filepath: c:\Users\manav\Desktop\financial-document-analyzer-debug\BRANCH_CHANGES.txt
+Summary of changes made on this branch vs main (detailed)
+
+1) tools.py
+ - Added environment loading (python-dotenv).
+ - Made PyPDFLoader import optional with try/except; handle missing langchain-community gracefully.
+ - Implemented a lazy _search_wrapper that imports/instantiates SerperDevTool only when needed; stopped instantiating SerperDevTool at module import time.
+ - Implemented read_financial_pdf(path) function: saves/reads PDF via PyPDFLoader (handles load/load_and_split variations), cleans text via _clean_text, returns diagnostic strings when file/loader unavailable or errors occur.
+ - Implemented analyze_investment_data(data) placeholder function (deterministic skeleton).
+ - Implemented create_risk_assessment(data) placeholder function (deterministic skeleton).
+ - Added _clean_text helper (normalize whitespace, collapse extra newlines).
+ - Exported all tools as plain Python dicts (name, func, description) to avoid CrewAI/langchain coercion issues and Pydantic/BaseTool instantiation problems.
+ - Added a fallback search_tool dict when crewai_tools.SerperDevTool is unavailable.
+
+2) agents.py
+ - Added missing os import and load_dotenv().
+ - Removed direct dependency on OpenAI ChatOpenAI in final branch (we added Groq option).
+ - Added robust handling for LLM provider:
+    - Attempt to use langchain_groq (if installed).
+    - If not available, provide a GroqAdapter fallback (HTTP adapter) that is instantiated only when GROQ_API_KEY present.
+ - Ensured Agent objects are created with llm present; removed tool lists from Agent constructors (to avoid runtime Pydantic coercion errors).
+ - Fixed model/parameter names and ensured no use of undefined variables.
+ - Added minimal Agent definitions (financial_analyst, verifier, risk_assessor, etc.) using the configured llm.
+
+3) task.py
+ - Fixed numerous syntax issues (mismatched parentheses/brackets).
+ - Rewrote Task definitions to:
+    - Use long, explicit description and expected_output blocks (JSON templates).
+    - Remove tool lists from Task constructors (to prevent coercion/abstract BaseTool instantiation at import time).
+    - Ensure tasks reference the Agent objects present in agents.py.
+ - Standardized naming to use the exported *_tool dicts (tools are supplied at execution time rather than forced at import).
+
+4) main.py
+ - Implemented FastAPI app skeleton with:
+    - GET / health endpoint returning {"status":"ok"}.
+    - POST /analyze that accepts UploadFile + query (saves uploaded file to tmp_uploads).
+    - Uses read_financial_pdf_tool's "func" to extract text (calls dict["func"]).
+    - Catches OpenAI/Groq API errors (e.g., RateLimit) and returns clear HTTP 5xx messages.
+ - Added run_crew() stub (placeholder) to integrate Crew kickoff when LLM/tasks are ready.
+ - Added guidance to run uvicorn without --reload for stable local testing when posting requests.
+
+5) Runtime / Pydantic / BaseTool handling
+ - Avoided instantiating abstract BaseTool subclasses at import time (this previously raised "Can't instantiate abstract class BaseTool" errors).
+ - Standardized approach to supply tools as plain dicts to Agents/Tasks or to pass tools at Task/Crew execution time.
+ - Removed earlier attempts that defined BaseTool subclasses without fully implementing required abstract methods.
+
+6) Testing & utilities
+ - Added test_post.py (renamed from import requests.py) as a scripted test client using requests; prints response code and preview.
+ - Documented how to run uvicorn and the test script.
+ - Addressed file-shadowing issue (don't name test files import requests.py).
+
+7) Error handling & developer ergonomics
+ - Added explicit diagnostics returned from tools when dependencies missing (e.g., "[read_financial_pdf] PyPDFLoader not available").
+ - Added HTTP 503 mapping for OpenAI rate/quota errors and clearer error messages in main.py.
+ - Included notes to set GROQ_API_KEY or OPENAI_API_KEY in .env / environment.
+
+8) Dependency recommendations (not added to branch as files)
+ - langchain-community (for PyPDFLoader)
+ - python-dotenv
+ - requests (for adapters/tests)
+ - langchain-groq (or official Groq SDK) if switching LLM provider
+ - crewai / crewai-tools (optional; used only if available)
+ - uvicorn, fastapi
+
+What remains / caveats
+ - The analyze_investment_data and create_risk_assessment functions are placeholders and must be implemented for production analysis.
+ - If you choose OpenAI instead of Groq, restore ChatOpenAI usage and ensure OPENAI_API_KEY is set; handle rate limits accordingly.
+ - If you prefer BaseTool / langchain.Tool instances, implement concrete classes with annotated fields and a working _run method, and instantiate them safely (not at import time) or pass dicts to Crew/Agent as done here.
+ - Confirm exact langchain_groq import/class name if you want to use the package directly; branch includes an adapter fallback to avoid import errors.
+
+End of change list.

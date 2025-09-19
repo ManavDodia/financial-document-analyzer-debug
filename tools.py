@@ -1,60 +1,102 @@
-## Importing libraries and files
 import os
+import re
+from typing import Any, Dict
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from crewai_tools import tools
-from crewai_tools.tools.serper_dev_tool import SerperDevTool
+# optional import for PDF loader
+try:
+    from langchain_community.document_loaders import PyPDFLoader
+except Exception:
+    PyPDFLoader = None
 
-## Creating search tool
-search_tool = SerperDevTool()
+# Do not instantiate SerperDevTool at import time (may subclass BaseTool without _run).
+# Instead import lazily inside the wrapper.
+def _search_wrapper(query: str) -> str:
+    try:
+        # import inside function so we don't instantiate at module import
+        from crewai_tools import SerperDevTool  # type: ignore
+        try:
+            tool = SerperDevTool()
+            # prefer public run() if present, fallback to _run
+            if hasattr(tool, "run"):
+                return tool.run(query)
+            if hasattr(tool, "_run"):
+                return tool._run(query)
+            return "[search_tool] SerperDevTool has no runnable method"
+        except Exception as e:
+            return f"[search_tool] Error instantiating SerperDevTool: {e}"
+    except Exception:
+        return "[search_tool] SerperDevTool not available"
 
-## Creating custom pdf reader tool
-class FinancialDocumentTool():
-    async def read_data_tool(path='data/sample.pdf'):
-        """Tool to read data from a pdf file from a path
+# export search_tool as plain dict so CrewAI Agent accepts it without coercing BaseTool
+search_tool: Dict[str, Any] = {
+    "name": "search",
+    "func": _search_wrapper,
+    "description": "Search wrapper using crewai_tools.SerperDevTool if available"
+}
 
-        Args:
-            path (str, optional): Path of the pdf file. Defaults to 'data/sample.pdf'.
+def _clean_text(txt: str) -> str:
+    txt = re.sub(r"[ \t]+", " ", txt)
+    txt = re.sub(r"\n{3,}", "\n\n", txt)
+    return txt.strip()
 
-        Returns:
-            str: Full Financial Document file
-        """
-        
-        docs = Pdf(file_path=path).load()
+def read_financial_pdf(path: str) -> str:
+    """Load and return cleaned text from a financial PDF"""
+    if not path or not os.path.exists(path):
+        return f"[read_financial_pdf] File not found: {path}"
 
-        full_report = ""
-        for data in docs:
-            # Clean and format the financial document data
-            content = data.page_content
-            
-            # Remove extra whitespaces and format properly
-            while "\n\n" in content:
-                content = content.replace("\n\n", "\n")
-                
-            full_report += content + "\n"
-            
-        return full_report
+    if PyPDFLoader is None:
+        return "[read_financial_pdf] PyPDFLoader not available. Install langchain-community."
 
-## Creating Investment Analysis Tool
-class InvestmentTool:
-    async def analyze_investment_tool(financial_document_data):
-        # Process and analyze the financial document data
-        processed_data = financial_document_data
-        
-        # Clean up the data format
-        i = 0
-        while i < len(processed_data):
-            if processed_data[i:i+2] == "  ":  # Remove double spaces
-                processed_data = processed_data[:i] + processed_data[i+1:]
-            else:
-                i += 1
-                
-        # TODO: Implement investment analysis logic here
-        return "Investment analysis functionality to be implemented"
+    try:
+        loader = PyPDFLoader(path)
+        # handle different loader APIs
+        if hasattr(loader, "load_and_split"):
+            pages = loader.load_and_split()
+        elif hasattr(loader, "load"):
+            pages = loader.load()
+        else:
+            return "[read_financial_pdf] Unsupported PyPDFLoader API."
 
-## Creating Risk Assessment Tool
-class RiskTool:
-    async def create_risk_assessment_tool(financial_document_data):        
-        # TODO: Implement risk assessment logic here
-        return "Risk assessment functionality to be implemented"
+        if not pages:
+            return "[read_financial_pdf] No extractable text (possibly image-only scan)."
+
+        text = "\n\n".join(getattr(p, "page_content", str(p)) for p in pages)
+        return _clean_text(text)
+    except Exception as e:
+        return f"[read_financial_pdf] Error reading PDF: {e}"
+
+def analyze_investment_data(data: str) -> str:
+    """Process and analyze financial document data (skeleton)"""
+    if not data or data.startswith("[read_financial_pdf]"):
+        return "[analyze_investment_data] No valid document text to analyze."
+    # placeholder - implement analysis logic here
+    return "Investment analysis pipeline not yet implemented."
+
+def create_risk_assessment(data: str) -> str:
+    """Create structured risk assessment from financial data (skeleton)"""
+    if not data or data.startswith("[read_financial_pdf]"):
+        return "[create_risk_assessment] No valid document text to analyze."
+    # placeholder - implement risk assessment logic here
+    return "Risk assessment pipeline not yet implemented."
+
+# Export tools as plain dictionaries (CrewAI accepts dicts or BaseTool instances)
+read_financial_pdf_tool: Dict[str, Any] = {
+    "name": "read_financial_pdf",
+    "func": read_financial_pdf,
+    "description": "Load and return cleaned text from a financial PDF"
+}
+
+analyze_investment_data_tool: Dict[str, Any] = {
+    "name": "analyze_investment_data",
+    "func": analyze_investment_data,
+    "description": "Process and analyze financial document data"
+}
+
+create_risk_assessment_tool: Dict[str, Any] = {
+    "name": "create_risk_assessment",
+    "func": create_risk_assessment,
+    "description": "Create structured risk assessment from financial data"
+}
