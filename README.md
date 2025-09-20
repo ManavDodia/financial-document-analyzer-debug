@@ -1,38 +1,70 @@
-# Financial Document Analyzer - Debug Assignment
+# Financial Document Analyzer — Fixed Edition
 
-## Project Overview
-A comprehensive financial document analysis system that processes corporate reports, financial statements, and investment documents using AI-powered analysis agents.
+A FastAPI + CrewAI system that analyzes financial PDF documents using LLM-based agents.
 
-## Getting Started
+---
 
-### Install Required Libraries
-```sh
-pip install -r requirement.txt
+## 🔧 Bugs Found & How You Fixed Them
+
+- General fixes applied across the codebase to ensure the service runs end-to-end.
+
+
+---
+
+## 🚀 Setup & Usage
+
+### 1) Environment
+
+```bash
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-### Sample Document
-The system analyzes financial documents like Tesla's Q2 2025 financial update.
+### 2) Configure Environment
+Create a `.env` in project root:
 
-**To add Tesla's financial document:**
-1. Download the Tesla Q2 2025 update from: https://www.tesla.com/sites/default/files/downloads/TSLA-Q2-2025-Update.pdf
-2. Save it as `data/sample.pdf` in the project directory
-3. Or upload any financial PDF through the API endpoint
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+SERPER_API_KEY=your-serper-key  # optional
+```
 
-**Note:** Current `data/sample.pdf` is a placeholder - replace with actual Tesla financial document for proper testing.
+### 3) Run the API
 
-# You're All Not Set!
-🐛 **Debug Mode Activated!** The project has bugs waiting to be squashed - your mission is to fix them and bring it to life.
+```bash
+uvicorn main:app --reload
+```
 
-## Debugging Instructions
+Open http://127.0.0.1:8000/docs to test.
 
-1. **Identify the Bug**: Carefully read the code in each file and understand the expected behavior. There is a bug in each line of code. So be careful.
-2. **Fix the Bug**: Implement the necessary changes to fix the bug.
-3. **Test the Fix**: Run the project and verify that the bug is resolved.
-4. **Repeat**: Continue this process until all bugs are fixed.
 
-## Expected Features
-- Upload financial documents (PDF format)
-- AI-powered financial analysis
-- Investment recommendations
-- Risk assessment
-- Market insights
+---
+
+## 📑 API Documentation
+
+### GET /
+Health check.
+
+**Response**
+```json
+{ "message": "Financial Document Analyzer API is running" }
+```
+
+### POST /analyze
+Analyze a financial document.
+
+**Request**: `multipart/form-data`
+- `file` (PDF, required)
+- `query` (string, optional)
+
+**Response**: `application/json`
+```json
+{
+  "query": "Summarize risks from this report",
+  "analysis": "<structured analysis text>",
+  "file_processed": "Tesla-Q2-2025.pdf"
+}
